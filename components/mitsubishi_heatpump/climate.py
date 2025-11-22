@@ -59,9 +59,7 @@ def valid_uart(uart):
     return cv.one_of(*uarts, upper=True)(uart)
 
 
-SELECT_SCHEMA = select.SELECT_SCHEMA.extend(
-    {cv.GenerateID(CONF_ID): cv.declare_id(MitsubishiACSelect)}
-)
+SELECT_SCHEMA = select.select_schema(MitsubishiACSelect)
 
 CONFIG_SCHEMA = climate.CLIMATE_SCHEMA.extend(
     {
