@@ -21,6 +21,7 @@
 #include "esphome/components/select/select.h"
 #include "esphome/core/preferences.h"
 #include <chrono>
+#include <unordered_map>
 
 #include "HeatPump.h"
 

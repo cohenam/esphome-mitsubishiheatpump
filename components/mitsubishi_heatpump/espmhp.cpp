@@ -166,72 +166,50 @@ void MitsubishiHeatPump::set_horizontal_vane_select(
 
 void MitsubishiHeatPump::on_vertical_swing_change(const std::string &swing) {
     ESP_LOGD(TAG, "Setting vertical swing position");
-    bool updated = false;
 
-    if (swing == "swing") {
-        hp->setVaneSetting("SWING");
-        updated = true;
-    } else if (swing == "auto") {
-        hp->setVaneSetting("AUTO");
-        updated = true;
-    } else if (swing == "up") {
-        hp->setVaneSetting("1");
-        updated = true;
-    } else if (swing == "up_center") {
-        hp->setVaneSetting("2");
-        updated = true;
-    } else if (swing == "center") {
-        hp->setVaneSetting("3");
-        updated = true;
-    } else if (swing == "down_center") {
-        hp->setVaneSetting("4");
-        updated = true;
-    } else if (swing == "down") {
-        hp->setVaneSetting("5");
-        updated = true;
+    // Lookup table for vertical vane settings
+    static const std::unordered_map<std::string, const char*> vane_map = {
+        {"swing", "SWING"},
+        {"auto", "AUTO"},
+        {"up", "1"},
+        {"up_center", "2"},
+        {"center", "3"},
+        {"down_center", "4"},
+        {"down", "5"}
+    };
+
+    auto it = vane_map.find(swing);
+    if (it != vane_map.end()) {
+        hp->setVaneSetting(it->second);
+        ESP_LOGD(TAG, "Vertical vane - Was HeatPump updated? %s", YESNO(true));
+        hp->update();
     } else {
-        ESP_LOGW(TAG, "Invalid vertical vane position %s", swing);
+        ESP_LOGW(TAG, "Invalid vertical vane position %s", swing.c_str());
     }
-
-    ESP_LOGD(TAG, "Vertical vane - Was HeatPump updated? %s", YESNO(updated));
-
-    // and the heat pump:
-    hp->update();
 }
 
 void MitsubishiHeatPump::on_horizontal_swing_change(const std::string &swing) {
     ESP_LOGD(TAG, "Setting horizontal swing position");
-    bool updated = false;
 
-    if (swing == "swing") {
-        hp->setWideVaneSetting("SWING");
-        updated = true;
-    } else if (swing == "auto") {
-        hp->setWideVaneSetting("<>");
-        updated = true;
-    } else if (swing == "left") {
-        hp->setWideVaneSetting("<<");
-        updated = true;
-    } else if (swing == "left_center") {
-        hp->setWideVaneSetting("<");
-        updated = true;
-    } else if (swing == "center") {
-        hp->setWideVaneSetting("|");
-        updated = true;
-    } else if (swing == "right_center") {
-        hp->setWideVaneSetting(">");
-        updated = true;
-    } else if (swing == "right") {
-        hp->setWideVaneSetting(">>");
-        updated = true;
+    // Lookup table for horizontal vane settings
+    static const std::unordered_map<std::string, const char*> wide_vane_map = {
+        {"swing", "SWING"},
+        {"auto", "<>"},
+        {"left", "<<"},
+        {"left_center", "<"},
+        {"center", "|"},
+        {"right_center", ">"},
+        {"right", ">>"}
+    };
+
+    auto it = wide_vane_map.find(swing);
+    if (it != wide_vane_map.end()) {
+        hp->setWideVaneSetting(it->second);
+        ESP_LOGD(TAG, "Horizontal vane - Was HeatPump updated? %s", YESNO(true));
+        hp->update();
     } else {
-        ESP_LOGW(TAG, "Invalid horizontal vane position %s", swing);
+        ESP_LOGW(TAG, "Invalid horizontal vane position %s", swing.c_str());
     }
-
-    ESP_LOGD(TAG, "Horizontal vane - Was HeatPump updated? %s", YESNO(updated));
-
-    // and the heat pump:
-    hp->update();
  }
 
 /**
@@ -490,19 +468,16 @@ void MitsubishiHeatPump::hpSettingsChanged() {
      *
      * const char* FAN_MAP[6]         = {"AUTO", "QUIET", "1", "2", "3", "4"};
      */
-    if (strcmp(currentSettings.fan, "QUIET") == 0) {
-        this->fan_mode = climate::CLIMATE_FAN_DIFFUSE;
-    } else if (strcmp(currentSettings.fan, "1") == 0) {
-            this->fan_mode = climate::CLIMATE_FAN_LOW;
-    } else if (strcmp(currentSettings.fan, "2") == 0) {
-            this->fan_mode = climate::CLIMATE_FAN_MEDIUM;
-    } else if (strcmp(currentSettings.fan, "3") == 0) {
-            this->fan_mode = climate::CLIMATE_FAN_MIDDLE;
-    } else if (strcmp(currentSettings.fan, "4") == 0) {
-            this->fan_mode = climate::CLIMATE_FAN_HIGH;
-    } else { //case "AUTO" or default:
-        this->fan_mode = climate::CLIMATE_FAN_AUTO;
-    }
+    static const std::unordered_map<std::string, climate::ClimateFanMode> fan_mode_map = {
+        {"QUIET", climate::CLIMATE_FAN_DIFFUSE},
+        {"1", climate::CLIMATE_FAN_LOW},
+        {"2", climate::CLIMATE_FAN_MEDIUM},
+        {"3", climate::CLIMATE_FAN_MIDDLE},
+        {"4", climate::CLIMATE_FAN_HIGH}
+    };
+
+    auto fan_it = fan_mode_map.find(currentSettings.fan);
+    this->fan_mode = (fan_it != fan_mode_map.end()) ? fan_it->second : climate::CLIMATE_FAN_AUTO;
     ESP_LOGI(TAG, "Fan mode is: %i", this->fan_mode.value_or(-1));
 
     /* ******** HANDLE MITSUBISHI VANE CHANGES ********
@@ -519,38 +494,39 @@ void MitsubishiHeatPump::hpSettingsChanged() {
         this->swing_mode = climate::CLIMATE_SWING_OFF;
     }
     ESP_LOGI(TAG, "Swing mode is: %i", this->swing_mode);
-    if (strcmp(currentSettings.vane, "SWING") == 0) {
-        this->update_swing_vertical("swing");
-    } else if (strcmp(currentSettings.vane, "AUTO") == 0) {
-        this->update_swing_vertical("auto");
-    } else if (strcmp(currentSettings.vane, "1") == 0) {
-        this->update_swing_vertical("up");
-    } else if (strcmp(currentSettings.vane, "2") == 0) {
-        this->update_swing_vertical("up_center");
-    } else if (strcmp(currentSettings.vane, "3") == 0) {
-        this->update_swing_vertical("center");
-    } else if (strcmp(currentSettings.vane, "4") == 0) {
-        this->update_swing_vertical("down_center");
-    } else if (strcmp(currentSettings.vane, "5") == 0) {
-        this->update_swing_vertical("down");
+
+    // Lookup table for vertical vane to state mapping
+    static const std::unordered_map<std::string, std::string> vane_to_state_map = {
+        {"SWING", "swing"},
+        {"AUTO", "auto"},
+        {"1", "up"},
+        {"2", "up_center"},
+        {"3", "center"},
+        {"4", "down_center"},
+        {"5", "down"}
+    };
+
+    auto vane_it = vane_to_state_map.find(currentSettings.vane);
+    if (vane_it != vane_to_state_map.end()) {
+        this->update_swing_vertical(vane_it->second);
     }
 
     ESP_LOGI(TAG, "Vertical vane mode is: %s", currentSettings.vane);
 
-    if (strcmp(currentSettings.wideVane, "SWING") == 0) {
-        this->update_swing_horizontal("swing");
-    } else if (strcmp(currentSettings.wideVane, "<>") == 0) {
-        this->update_swing_horizontal("auto");
-    } else if (strcmp(currentSettings.wideVane, "<<") == 0) {
-        this->update_swing_horizontal("left");
-    } else if (strcmp(currentSettings.wideVane, "<") == 0) {
-        this->update_swing_horizontal("left_center");
-    } else if (strcmp(currentSettings.wideVane, "|") == 0) {
-        this->update_swing_horizontal("center");
-    } else if (strcmp(currentSettings.wideVane, ">") == 0) {
-        this->update_swing_horizontal("right_center");
-    } else if (strcmp(currentSettings.wideVane, ">>") == 0) {
-        this->update_swing_horizontal("right");
+    // Lookup table for horizontal vane to state mapping
+    static const std::unordered_map<std::string, std::string> wide_vane_to_state_map = {
+        {"SWING", "swing"},
+        {"<>", "auto"},
+        {"<<", "left"},
+        {"<", "left_center"},
+        {"|", "center"},
+        {">", "right_center"},
+        {">>", "right"}
+    };
+
+    auto wide_vane_it = wide_vane_to_state_map.find(currentSettings.wideVane);
+    if (wide_vane_it != wide_vane_to_state_map.end()) {
+        this->update_swing_horizontal(wide_vane_it->second);
     }
 
     ESP_LOGI(TAG, "Horizontal vane mode is: %s", currentSettings.wideVane);
@@ -782,14 +758,14 @@ void MitsubishiHeatPump::dump_state() {
 }
 
 void MitsubishiHeatPump::log_packet(byte* packet, unsigned int length, char* packetDirection) {
-    String packetHex;
-    char textBuf[15];
+    // Use a fixed-size buffer to avoid dynamic allocation
+    // Maximum packet length is typically around 22 bytes, so 3 chars per byte (XX + space) + null
+    char packetHex[256];
+    int offset = 0;
 
-    for (int i = 0; i < length; i++) {
-        memset(textBuf, 0, 15);
-        sprintf(textBuf, "%02X ", packet[i]);
-        packetHex += textBuf;
+    for (unsigned int i = 0; i < length && offset < (int)sizeof(packetHex) - 4; i++) {
+        offset += snprintf(packetHex + offset, sizeof(packetHex) - offset, "%02X ", packet[i]);
     }
-    
-    ESP_LOGV(TAG, "PKT: [%s] %s", packetDirection, packetHex.c_str());
+
+    ESP_LOGV(TAG, "PKT: [%s] %s", packetDirection, packetHex);
 }
