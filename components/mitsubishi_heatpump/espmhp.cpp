@@ -127,7 +127,7 @@ void MitsubishiHeatPump::update_swing_horizontal(const std::string &swing) {
     this->horizontal_swing_state_ = swing;
 
     if (this->horizontal_vane_select_ != nullptr &&
-        this->horizontal_vane_select_->state != this->horizontal_swing_state_) {
+        this->horizontal_vane_select_->current_option() != this->horizontal_swing_state_) {
         this->horizontal_vane_select_->publish_state(
             this->horizontal_swing_state_);  // Set current horizontal swing
                                              // position
@@ -138,7 +138,7 @@ void MitsubishiHeatPump::update_swing_vertical(const std::string &swing) {
     this->vertical_swing_state_ = swing;
 
     if (this->vertical_vane_select_ != nullptr &&
-        this->vertical_vane_select_->state != this->vertical_swing_state_) {
+        this->vertical_vane_select_->current_option() != this->vertical_swing_state_) {
         this->vertical_vane_select_->publish_state(
             this->vertical_swing_state_);  // Set current vertical swing position
     }
