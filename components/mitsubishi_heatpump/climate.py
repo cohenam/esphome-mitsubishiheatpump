@@ -95,8 +95,13 @@ CONFIG_SCHEMA = climate.climate_schema(MitsubishiHeatPump).extend(
 
 @coroutine
 def to_code(config):
-    serial = HARDWARE_UART_TO_SERIAL[PLATFORM_ESP8266][config[CONF_HARDWARE_UART]]
-    var = cg.new_Pvariable(config[CONF_ID], cg.RawExpression(f"&{serial}"))
+    if CORE.is_esp8266:
+        # ESPHome 2026+ doesn't link Serial. Create our own HardwareSerial instance for UART0
+        cg.add_global(cg.RawStatement('static HardwareSerial espmhp_serial(UART0);'))
+        var = cg.new_Pvariable(config[CONF_ID], cg.RawExpression('&espmhp_serial'))
+    else:
+        serial = HARDWARE_UART_TO_SERIAL[PLATFORM_ESP8266][config[CONF_HARDWARE_UART]]
+        var = cg.new_Pvariable(config[CONF_ID], cg.RawExpression(f"&{serial}"))
 
     if CONF_BAUD_RATE in config:
         cg.add(var.set_baud_rate(config[CONF_BAUD_RATE]))

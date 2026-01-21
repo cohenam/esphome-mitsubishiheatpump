@@ -19,6 +19,7 @@
  */
 
 #include "espmhp.h"
+
 using namespace esphome;
 
 /**
@@ -149,7 +150,10 @@ void MitsubishiHeatPump::set_vertical_vane_select(
     select::Select *vertical_vane_select) {
     this->vertical_vane_select_ = vertical_vane_select;
     this->vertical_vane_select_->add_on_state_callback(
-        [this](const std::string &value, size_t index) {
+        [this](size_t index) {
+            const auto& options = this->vertical_vane_select_->traits.get_options();
+            if (index >= options.size()) return;
+            std::string value = options[index];
             if (value == this->vertical_swing_state_) return;
             this->on_vertical_swing_change(value);
         });
@@ -159,7 +163,10 @@ void MitsubishiHeatPump::set_horizontal_vane_select(
     select::Select *horizontal_vane_select) {
       this->horizontal_vane_select_ = horizontal_vane_select;
       this->horizontal_vane_select_->add_on_state_callback(
-          [this](const std::string &value, size_t index) {
+          [this](size_t index) {
+              const auto& options = this->horizontal_vane_select_->traits.get_options();
+              if (index >= options.size()) return;
+              std::string value = options[index];
               if (value == this->horizontal_swing_state_) return;
               this->on_horizontal_swing_change(value);
           });
@@ -717,10 +724,8 @@ void MitsubishiHeatPump::setup() {
 
     ESP_LOGCONFIG(
             TAG,
-            "hw_serial(%p) is &Serial(%p)? %s",
-            this->get_hw_serial_(),
-            &Serial,
-            YESNO((void *)this->get_hw_serial_() == (void *)&Serial)
+            "hw_serial(%p)",
+            this->get_hw_serial_()
     );
 
     ESP_LOGCONFIG(TAG, "Calling hp->connect(%p)", this->get_hw_serial_());
