@@ -12,7 +12,8 @@ from esphome.const import (
     CONF_MODE,
     CONF_FAN_MODE,
     CONF_SWING_MODE,
-    PLATFORM_ESP8266
+    PLATFORM_ESP8266,
+    PLATFORM_ESP32,
 )
 from esphome.core import CORE, coroutine
 
@@ -100,7 +101,7 @@ def to_code(config):
         cg.add_global(cg.RawStatement('static HardwareSerial espmhp_serial(UART0);'))
         var = cg.new_Pvariable(config[CONF_ID], cg.RawExpression('&espmhp_serial'))
     else:
-        serial = HARDWARE_UART_TO_SERIAL[PLATFORM_ESP8266][config[CONF_HARDWARE_UART]]
+        serial = HARDWARE_UART_TO_SERIAL[PLATFORM_ESP32][config[CONF_HARDWARE_UART]]
         var = cg.new_Pvariable(config[CONF_ID], cg.RawExpression(f"&{serial}"))
 
     if CONF_BAUD_RATE in config:

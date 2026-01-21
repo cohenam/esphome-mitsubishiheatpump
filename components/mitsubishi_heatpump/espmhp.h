@@ -21,6 +21,7 @@
 #include "esphome/components/select/select.h"
 #include "esphome/core/preferences.h"
 #include <chrono>
+#include <cmath>
 
 #include "HeatPump.h"
 
@@ -172,12 +173,23 @@ class MitsubishiHeatPump : public esphome::PollingComponent, public esphome::cli
     private:
         void enforce_remote_temperature_sensor_timeout();
 
+        // Only publish state if it has actually changed
+        void publish_state_if_changed();
+
         // Retrieve the HardwareSerial pointer from friend and subclasses.
         HardwareSerial *hw_serial_;
         int baud_ = 0;
         int rx_pin_ = -1;
         int tx_pin_ = -1;
         bool operating_ = false;
+
+        // State change tracking for publish_state() optimization
+        esphome::climate::ClimateMode last_mode_{};
+        esphome::climate::ClimateAction last_action_{};
+        float last_target_temperature_{NAN};
+        float last_current_temperature_{NAN};
+        esphome::optional<esphome::climate::ClimateFanMode> last_fan_mode_{};
+        esphome::climate::ClimateSwingMode last_swing_mode_{};
 
         std::optional<std::chrono::duration<long long, std::ratio<60>>> remote_operating_timeout_;
         std::optional<std::chrono::duration<long long, std::ratio<60>>> remote_idle_timeout_;

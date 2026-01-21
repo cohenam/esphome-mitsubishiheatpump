@@ -572,7 +572,7 @@ void MitsubishiHeatPump::hpSettingsChanged() {
     /*
      * ******** Publish state back to ESPHome. ********
      */
-    this->publish_state();
+    this->publish_state_if_changed();
 }
 
 /**
@@ -624,7 +624,7 @@ void MitsubishiHeatPump::hpStatusChanged(heatpumpStatus currentStatus) {
 
     this->operating_ = currentStatus.operating;
 
-    this->publish_state();
+    this->publish_state_if_changed();
 }
 
 void MitsubishiHeatPump::set_remote_temperature(float temp) {
@@ -787,15 +787,55 @@ void MitsubishiHeatPump::dump_state() {
     ESP_LOGI(TAG, "HELLO");
 }
 
-void MitsubishiHeatPump::log_packet(byte* packet, unsigned int length, char* packetDirection) {
-    String packetHex;
-    char textBuf[15];
+void MitsubishiHeatPump::publish_state_if_changed() {
+    // Check if any state has changed
+    bool changed = false;
 
-    for (int i = 0; i < length; i++) {
-        memset(textBuf, 0, 15);
-        sprintf(textBuf, "%02X ", packet[i]);
-        packetHex += textBuf;
+    if (this->mode != last_mode_) {
+        changed = true;
+    } else if (this->action != last_action_) {
+        changed = true;
+    } else if (this->fan_mode != last_fan_mode_) {
+        changed = true;
+    } else if (this->swing_mode != last_swing_mode_) {
+        changed = true;
+    } else if (this->target_temperature != last_target_temperature_ &&
+               !(std::isnan(this->target_temperature) && std::isnan(last_target_temperature_))) {
+        changed = true;
+    } else if (this->current_temperature != last_current_temperature_ &&
+               !(std::isnan(this->current_temperature) && std::isnan(last_current_temperature_))) {
+        changed = true;
     }
-    
-    ESP_LOGV(TAG, "PKT: [%s] %s", packetDirection, packetHex.c_str());
+
+    if (changed) {
+        // Update tracking state
+        last_mode_ = this->mode;
+        last_action_ = this->action;
+        last_fan_mode_ = this->fan_mode;
+        last_swing_mode_ = this->swing_mode;
+        last_target_temperature_ = this->target_temperature;
+        last_current_temperature_ = this->current_temperature;
+
+        this->publish_state();
+    }
+}
+
+void MitsubishiHeatPump::log_packet(byte* packet, unsigned int length, char* packetDirection) {
+    // Pre-allocate buffer: 3 chars per byte (2 hex + space) + null terminator
+    // Max packet size is typically 22 bytes, buffer for up to 64 bytes
+    constexpr size_t MAX_PACKET_LEN = 64;
+    char packetHex[MAX_PACKET_LEN * 3 + 1];
+
+    size_t pos = 0;
+    size_t max_bytes = (length < MAX_PACKET_LEN) ? length : MAX_PACKET_LEN;
+    for (size_t i = 0; i < max_bytes; i++) {
+        pos += sprintf(packetHex + pos, "%02X ", packet[i]);
+    }
+    if (pos > 0) {
+        packetHex[pos - 1] = '\0';  // Remove trailing space
+    } else {
+        packetHex[0] = '\0';
+    }
+
+    ESP_LOGV(TAG, "PKT: [%s] %s", packetDirection, packetHex);
 }
